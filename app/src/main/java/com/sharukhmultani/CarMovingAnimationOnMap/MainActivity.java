@@ -9,6 +9,7 @@ import android.location.Location;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.widget.TextView;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -23,41 +24,32 @@ import com.google.android.gms.maps.model.PolylineOptions;
 import java.util.ArrayList;
 import java.util.List;
 
+import static java.lang.StrictMath.acos;
 import static java.lang.StrictMath.atan;
+import static java.lang.StrictMath.cos;
+import static java.lang.StrictMath.sin;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
     GoogleMap mapAPI;
     SupportMapFragment mapFragment;
     List<LatLngList> latLngListAddresses = new ArrayList<>();
     private Marker carMarker;
+    TextView tvDistnace;
     private List<LatLng> lt = new ArrayList<>();
     private LatLng currentLatlong, prevLatLong;
+    private double totalDistance, mainDistance;
+    private double totalDistanceTime, mainDistanceTime;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        tvDistnace = findViewById(R.id.tvDistnace);
         //getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
         mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.mapAPI);
         mapFragment.getMapAsync(this);
     }
 
-
-    private List<LatLng> getLocations() {
-        List<LatLng> locationList = new ArrayList<>();
-        locationList.add(new LatLng(28.436970000000002, 77.11272000000001));
-        locationList.add(new LatLng(28.43635, 77.11289000000001));
-        locationList.add(new LatLng(28.4353, 77.11317000000001));
-        locationList.add(new LatLng(28.435280000000002, 77.11332));
-        locationList.add(new LatLng(28.435350000000003, 77.11368));
-        locationList.add(new LatLng(28.4356, 77.11498));
-        locationList.add(new LatLng(28.435660000000002, 77.11519000000001));
-        locationList.add(new LatLng(28.43568, 77.11521));
-        locationList.add(new LatLng(28.436580000000003, 77.11499));
-        locationList.add(new LatLng(28.436590000000002, 77.11507));
-
-        return locationList;
-    }
 
     private void showCarAnimation(final int finalI, final GoogleMap map) {
 
@@ -74,7 +66,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     } else {
                         prevLatLong = currentLatlong;
                         currentLatlong = lt.get(finalI);
-                        Log.e("TAG", "run: " + prevLatLong.latitude + " : " + currentLatlong.latitude);
+                        final int locationDist = (int) getKilometers(prevLatLong.latitude, prevLatLong.longitude, currentLatlong.latitude, currentLatlong.longitude);
+                        Log.e("TAG", "run: " + totalDistance + " : " + locationDist);
+                        totalDistance -= locationDist;
+                        final int locationDistTime = (int) getTime(prevLatLong.latitude, prevLatLong.longitude, currentLatlong.latitude, currentLatlong.longitude);
+                        Log.e("TAG", "run: " + totalDistanceTime + " : " + locationDistTime);
+                        totalDistanceTime -= locationDistTime;
                         ValueAnimator valueAnimator = new ValueAnimator();
                         valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
                             @Override
@@ -85,8 +82,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                 carMarker.setPosition(lng);
                                 carMarker.setRotation(getRotation(prevLatLong, lng));
 
-                                float distanceTime = getTime(currentLatlong.latitude, currentLatlong.longitude, prevLatLong.latitude, prevLatLong.longitude);
-                                carMarker.setTitle(String.valueOf(distanceTime));
+                                float distanceTime = getTime(prevLatLong.latitude, prevLatLong.longitude, lng.latitude, lng.longitude);
+                                double distance = getKilometers(prevLatLong.latitude, prevLatLong.longitude, lng.latitude, lng.longitude);
+                                tvDistnace.setText("Total KM " + mainDistance + "\nKM " + (totalDistance + (locationDist - distance)) + "\n" +
+                                        "Total Time " + convertSecondsToHMmSs((long) mainDistanceTime) + "\nTime " + convertSecondsToHMmSs((long) (totalDistanceTime + (locationDistTime - distanceTime))));
+                                //carMarker.setTitle("KM " + String.format("%.0f", distance) + " Time " + convertSecondsToHMmSs((long) distanceTime));
+
                                 //map.animateCamera(CameraUpdateFactory.newLatLngZoom(lng, 10f));
                             }
                         });
@@ -100,8 +101,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             }
                         }, 3000);
                         Log.e("aasd", "run: again");
-                        if (isRun)
+                        if (isRun) {
+                            Log.e("Location", "run: left total distance : " + totalDistance + " : " + getKilometers(prevLatLong.latitude, prevLatLong.longitude, currentLatlong.latitude, currentLatlong.longitude));
                             showCarAnimation(finalI + 1, map);
+                        }
                     }
                 }
             }, 3000);
@@ -147,8 +150,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mapAPI.addMarker(new MarkerOptions().position((lt.get(lt.size() - 1))).title("End " + latLngListAddresses.get(lt.size() - 1).getPlace()));
         //Bitmap bt = new BitmapFactory(context.resources, R.drawable.ic_car);
         Bitmap icon = BitmapFactory.decodeResource(getResources(),
-                R.drawable.ic_car);
-        Bitmap ic = Bitmap.createScaledBitmap(icon, 50, 100, false);
+                R.drawable.ic_cars);
+        Bitmap ic = Bitmap.createScaledBitmap(icon, 50, 50, false);
 
         carMarker = mapAPI.addMarker(new MarkerOptions().position((lt.get(0))).title("Start " + latLngListAddresses.get(0).getPlace()));
         carMarker.setIcon(BitmapDescriptorFactory.fromBitmap(ic));
@@ -160,7 +163,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         //LatLng lt = new LatLng(latLngListAddresses.get(0).getLat(), latLngListAddresses.get(0).getLng());
         mapAPI.getUiSettings().setZoomControlsEnabled(true);
         mapAPI.moveCamera(CameraUpdateFactory.newLatLngZoom(lt.get(0), 8));
-
+        totalDistance = mainDistance = getTotalDistance();
+        totalDistanceTime=mainDistanceTime=getTotalTime();
         showCarAnimation(0, mapAPI);
     }
 
@@ -175,7 +179,42 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         float distance = loc1.distanceTo(loc2);
 
-        int speed = 30;
+        int speed = 10;
         return distance / speed;
+    }
+
+
+    public double getKilometers(double lat1, double long1, double lat2, double long2) {
+        double PI_RAD = Math.PI / 180.0;
+        double phi1 = lat1 * PI_RAD;
+        double phi2 = lat2 * PI_RAD;
+        double lam1 = long1 * PI_RAD;
+        double lam2 = long2 * PI_RAD;
+
+        return Math.round(6371.01 * acos(sin(phi1) * sin(phi2) + cos(phi1) * cos(phi2) * cos(lam2 - lam1)));
+    }
+
+    public static String convertSecondsToHMmSs(long seconds) {
+        long s = seconds % 60;
+        long m = (seconds / 60) % 60;
+        long h = (seconds / (60 * 60)) % 24;
+        return String.format("%d:%02d:%02d", h, m, s);
+    }
+
+    private int getTotalDistance() {
+        int distance = 0;
+        for (int i = 0; i < latLngListAddresses.size() - 1; i++) {
+            distance += getKilometers(latLngListAddresses.get(i).getLat(), latLngListAddresses.get(i).getLng(), latLngListAddresses.get(i + 1).getLat(), latLngListAddresses.get(i + 1).getLng());
+            Log.e("Location", "getTotalDistance: " + distance + " : " + getKilometers(latLngListAddresses.get(i).getLat(), latLngListAddresses.get(i).getLng(), latLngListAddresses.get(i + 1).getLat(), latLngListAddresses.get(i + 1).getLng()));
+        }
+        return distance;
+    }
+    private int getTotalTime() {
+        int time = 0;
+        for (int i = 0; i < latLngListAddresses.size() - 1; i++) {
+            time += getTime(latLngListAddresses.get(i).getLat(), latLngListAddresses.get(i).getLng(), latLngListAddresses.get(i + 1).getLat(), latLngListAddresses.get(i + 1).getLng());
+            Log.e("Location", "getTotalDistanceTime: " + time + " : " + getTime(latLngListAddresses.get(i).getLat(), latLngListAddresses.get(i).getLng(), latLngListAddresses.get(i + 1).getLat(), latLngListAddresses.get(i + 1).getLng()));
+        }
+        return time;
     }
 }

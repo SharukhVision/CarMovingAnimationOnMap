@@ -44,6 +44,7 @@ public class LatLngList {
         latLngListAddresses.add(new LatLngList(21.120001, 73.400002,"Vyara")); //Vyara
         latLngListAddresses.add(new LatLngList(21.124857, 73.112610,"Bardoli")); //Bardoli
         latLngListAddresses.add(new LatLngList(21.170240, 72.831062,"Surat"));  //Surat
+        latLngListAddresses.add(new LatLngList(20.385181,72.911453,"Vapi")); //vapi
         return latLngListAddresses;
 
     }
