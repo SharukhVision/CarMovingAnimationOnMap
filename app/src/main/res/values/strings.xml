@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">CarMovingAnimationOnMap</string>
+    <string name="on_time">ON TIME</string>
+    <string name="arriving_in">ARRIVING IN</string>
+    <string name="_13_mins">Time</string>
+    <string name="todo">TODO</string>
 </resources>

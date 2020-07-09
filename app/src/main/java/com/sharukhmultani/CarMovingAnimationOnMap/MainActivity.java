@@ -21,8 +21,12 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PolylineOptions;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static java.lang.StrictMath.acos;
 import static java.lang.StrictMath.atan;
@@ -34,7 +38,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     SupportMapFragment mapFragment;
     List<LatLngList> latLngListAddresses = new ArrayList<>();
     private Marker carMarker;
-    TextView tvDistnace;
+    TextView tvDistnace, tvTime;
     private List<LatLng> lt = new ArrayList<>();
     private LatLng currentLatlong, prevLatLong;
     private double totalDistance, mainDistance;
@@ -44,7 +48,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        getSupportActionBar().hide();
         tvDistnace = findViewById(R.id.tvDistnace);
+        tvTime = findViewById(R.id.tvTime);
         //getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
         mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.mapAPI);
         mapFragment.getMapAsync(this);
@@ -84,8 +90,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                                 float distanceTime = getTime(prevLatLong.latitude, prevLatLong.longitude, lng.latitude, lng.longitude);
                                 double distance = getKilometers(prevLatLong.latitude, prevLatLong.longitude, lng.latitude, lng.longitude);
-                                tvDistnace.setText("Total KM " + mainDistance + "\nKM " + (totalDistance + (locationDist - distance)) + "\n" +
-                                        "Total Time " + convertSecondsToHMmSs((long) mainDistanceTime) + "\nTime " + convertSecondsToHMmSs((long) (totalDistanceTime + (locationDistTime - distanceTime))));
+                               /* tvDistnace.setText("Total KM " + mainDistance + "\nKM " + (totalDistance + (locationDist - distance)) + "\n" +
+                                        "Total Time " + convertSecondsToHMmSs((long) mainDistanceTime) + "\nTime " + convertSecondsToHMmSs((long) (totalDistanceTime + (locationDistTime - distanceTime))));*/
+                                DateFormat dateFormat = new SimpleDateFormat("HH:MM a");
+                                Calendar cal = Calendar.getInstance();
+                                tvDistnace.setText(dateFormat.format(cal.getTime()) + "| 1 Item. 400");
+                                tvTime.setText(convertSecondsToHMmSs((long) (totalDistanceTime + (locationDistTime - distanceTime))));
                                 //carMarker.setTitle("KM " + String.format("%.0f", distance) + " Time " + convertSecondsToHMmSs((long) distanceTime));
 
                                 //map.animateCamera(CameraUpdateFactory.newLatLngZoom(lng, 10f));
@@ -142,29 +152,41 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         latLngListAddresses = LatLngList.setLatLng();
         PolylineOptions opts = new PolylineOptions();
         for (int i = 0; i < latLngListAddresses.size(); i++) {
-            //LatLng lt = new LatLng(latLngListAddresses.get(i).getLat(), latLngListAddresses.get(i).getLng());
             lt.add(new LatLng(latLngListAddresses.get(i).getLat(), latLngListAddresses.get(i).getLng()));
-            // opts = new PolylineOptions().add(lt).color(Color.BLUE).width(10)
         }
-        mapAPI.addMarker(new MarkerOptions().position((lt.get(0))).title("Start " + latLngListAddresses.get(0).getPlace()));
-        mapAPI.addMarker(new MarkerOptions().position((lt.get(lt.size() - 1))).title("End " + latLngListAddresses.get(lt.size() - 1).getPlace()));
+        Bitmap icon, ic;
+        icon = BitmapFactory.decodeResource(getResources(),
+                R.drawable.plate);
+        ic = Bitmap.createScaledBitmap(icon, 50, 50, false);
+        mapAPI.addMarker(new MarkerOptions()
+                .position((lt.get(0))).title("Start " + latLngListAddresses.get(0).getPlace())
+                .title("Restaurant ")
+                .icon(BitmapDescriptorFactory.fromBitmap(ic)));
+        icon = BitmapFactory.decodeResource(getResources(),
+                R.drawable.home);
+        ic = Bitmap.createScaledBitmap(icon, 50, 50, false);
+        mapAPI.addMarker(new MarkerOptions()
+                .position((lt.get(lt.size() - 1))).title("End " + latLngListAddresses.get(lt.size() - 1).getPlace())
+                .icon(BitmapDescriptorFactory.fromBitmap(ic))
+                .title("Home")
+                .rotation(360));
         //Bitmap bt = new BitmapFactory(context.resources, R.drawable.ic_car);
-        Bitmap icon = BitmapFactory.decodeResource(getResources(),
+        icon = BitmapFactory.decodeResource(getResources(),
                 R.drawable.ic_cars);
-        Bitmap ic = Bitmap.createScaledBitmap(icon, 50, 50, false);
-
+        ic = Bitmap.createScaledBitmap(icon, 50, 50, false);
         carMarker = mapAPI.addMarker(new MarkerOptions().position((lt.get(0))).title("Start " + latLngListAddresses.get(0).getPlace()));
         carMarker.setIcon(BitmapDescriptorFactory.fromBitmap(ic));
         carMarker.setRotation(getRotation(lt.get(0), lt.get(1)));
-
         //mapAPI.addPolyline(opts);
-        mapAPI.addPolyline(new PolylineOptions().addAll(lt));
+        mapAPI.addPolyline(new PolylineOptions()
+                .addAll(lt)
+                .color(R.color.colorBg));
 
         //LatLng lt = new LatLng(latLngListAddresses.get(0).getLat(), latLngListAddresses.get(0).getLng());
         mapAPI.getUiSettings().setZoomControlsEnabled(true);
         mapAPI.moveCamera(CameraUpdateFactory.newLatLngZoom(lt.get(0), 8));
         totalDistance = mainDistance = getTotalDistance();
-        totalDistanceTime=mainDistanceTime=getTotalTime();
+        totalDistanceTime = mainDistanceTime = getTotalTime();
         showCarAnimation(0, mapAPI);
     }
 
@@ -209,6 +231,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         return distance;
     }
+
     private int getTotalTime() {
         int time = 0;
         for (int i = 0; i < latLngListAddresses.size() - 1; i++) {
